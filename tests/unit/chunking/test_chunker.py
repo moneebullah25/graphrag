@@ -4,12 +4,14 @@
 from typing import Any
 from unittest.mock import Mock, patch
 
+import pytest
 from graphrag.tokenizer.get_tokenizer import get_tokenizer
 from graphrag_chunking.bootstrap_nltk import bootstrap
 from graphrag_chunking.chunk_strategy_type import ChunkerType
 from graphrag_chunking.chunker_factory import create_chunker
 from graphrag_chunking.chunking_config import ChunkingConfig
 from graphrag_chunking.token_chunker import (
+    TokenChunker,
     split_text_on_tokens,
 )
 from graphrag_llm.tokenizer import Tokenizer
@@ -188,3 +190,33 @@ def test_split_text_on_tokens_no_overlap():
     )
 
     assert result == expected_splits
+
+
+@pytest.mark.parametrize(
+    ("size", "overlap"), [(10, 10), (10, 11), (0, 0), (-1, 0), (10, -1)]
+)
+def test_invalid_size_overlap_rejected(size, overlap):
+    with pytest.raises(ValueError, match=r"size|overlap"):
+        ChunkingConfig(size=size, overlap=overlap)
+    with pytest.raises(ValueError, match=r"size|overlap"):
+        TokenChunker(
+            size=size, overlap=overlap, encode=lambda _: [], decode=lambda _: ""
+        )
+    with pytest.raises(ValueError, match=r"size|overlap"):
+        split_text_on_tokens(
+            "abc",
+            chunk_size=size,
+            chunk_overlap=overlap,
+            encode=lambda _: [],
+            decode=lambda _: "",
+        )
+
+
+@pytest.mark.parametrize(("size", "overlap"), [(1, 0), (10, 0), (10, 9), (1200, 100)])
+def test_valid_size_overlap_accepted(size, overlap):
+    ChunkingConfig(size=size, overlap=overlap)
+    TokenChunker(size=size, overlap=overlap, encode=lambda _: [], decode=lambda _: "")
+
+
+def test_overlap_ignored_for_sentence_chunker():
+    ChunkingConfig(type=ChunkerType.Sentence, size=50, overlap=100)

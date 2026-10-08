@@ -3,7 +3,7 @@
 
 """Parameterization settings for the default configuration."""
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from graphrag_chunking.chunk_strategy_type import ChunkerType
 
@@ -25,12 +25,22 @@ class ChunkingConfig(BaseModel):
     size: int = Field(
         description="The chunk size to use.",
         default=1200,
+        gt=0,
     )
     overlap: int = Field(
         description="The chunk overlap to use.",
         default=100,
+        ge=0,
     )
     prepend_metadata: list[str] | None = Field(
         description="Metadata fields from the source document to prepend on each chunk.",
         default=None,
     )
+
+    @model_validator(mode="after")
+    def _validate_overlap(self) -> "ChunkingConfig":
+        """Ensure the overlap is smaller than the chunk size for token chunking."""
+        if self.type == ChunkerType.Tokens and self.overlap >= self.size:
+            msg = f"overlap ({self.overlap}) must be less than size ({self.size})."
+            raise ValueError(msg)
+        return self

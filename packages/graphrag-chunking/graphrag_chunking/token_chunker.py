@@ -11,6 +11,16 @@ from graphrag_chunking.create_chunk_results import create_chunk_results
 from graphrag_chunking.text_chunk import TextChunk
 
 
+def _validate_size_overlap(size: int, overlap: int) -> None:
+    """Reject values for which token splitting would never advance."""
+    if size <= 0:
+        msg = f"size must be greater than 0, got {size}."
+        raise ValueError(msg)
+    if not 0 <= overlap < size:
+        msg = f"overlap must be >= 0 and less than size ({size}), got {overlap}."
+        raise ValueError(msg)
+
+
 class TokenChunker(Chunker):
     """A chunker that splits text into token-based chunks."""
 
@@ -23,6 +33,7 @@ class TokenChunker(Chunker):
         **kwargs: Any,
     ) -> None:
         """Create a token chunker instance."""
+        _validate_size_overlap(size, overlap)
         self._size = size
         self._overlap = overlap
         self._encode = encode
@@ -50,6 +61,7 @@ def split_text_on_tokens(
     decode: Callable[[list[int]], str],
 ) -> list[str]:
     """Split a single text and return chunks using the tokenizer."""
+    _validate_size_overlap(chunk_size, chunk_overlap)
     result = []
     input_tokens = encode(text)
 
