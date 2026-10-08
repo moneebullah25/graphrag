@@ -35,7 +35,10 @@ class JSONLinesFileReader(StructuredFileReader):
         """
         text = await self._storage.get(path, encoding=self._encoding)
         rows: list[dict] = []
-        for line_number, line in enumerate(text.splitlines(), start=1):
+        # split on "\n" only: str.splitlines() also splits on U+2028/U+2029/U+0085,
+        # which are legal unescaped inside JSON strings.
+        for line_number, line in enumerate(text.split("\n"), start=1):
+            line = line.removesuffix("\r")
             if not line.strip():
                 continue
 

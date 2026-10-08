@@ -1,0 +1,4 @@
+{
+  "type": "patch",
+  "description": "Fix JSONL reader dropping rows containing U+2028, U+2029 or U+0085."
+}

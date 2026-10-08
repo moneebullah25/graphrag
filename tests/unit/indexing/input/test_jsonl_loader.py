@@ -57,3 +57,23 @@ async def test_jsonl_loader_skips_blank_and_invalid_rows():
 
     assert len(documents) == 3
     assert [document.title for document in documents] == ["Hello", "Goodbye", "Adios"]
+
+
+async def test_jsonl_loader_keeps_rows_with_unicode_line_separators(tmp_path):
+    ls, nel, ps = chr(0x2028), chr(0x85), chr(0x2029)
+    rows = [
+        f'{{"title": "a", "text": "x{ls}y"}}',
+        f'{{"title": "b", "text": "x{nel}y{ps}z"}}',
+        '{"title": "c", "text": "plain"}',
+    ]
+    (tmp_path / "input.jsonl").write_text(
+        "\r\n".join(rows) + "\r\n", encoding="utf-8", newline=""
+    )
+    config = InputConfig(type=InputType.JsonLines, title_column="title")
+    storage = create_storage(StorageConfig(base_dir=str(tmp_path)))
+    reader = create_input_reader(config, storage)
+    documents = await reader.read_files()
+
+    assert [document.title for document in documents] == ["a", "b", "c"]
+    assert documents[0].text == f"x{ls}y"
+    assert documents[1].text == f"x{nel}y{ps}z"
